@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>四川麻将 Coach</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background: #1a1a2e;
+      color: #ecf0f1;
+      font-family: -apple-system, "Helvetica Neue", sans-serif;
+      min-height: 100dvh;
+      padding-bottom: env(safe-area-inset-bottom, 16px);
+    }
+
+    h1 {
+      text-align: center;
+      color: #e94560;
+      padding: 14px 0 8px;
+      font-size: 1.35em;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── panels ── */
+    .panel {
+      background: #16213e;
+      margin: 0 10px 8px;
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+
+    /* ── hand display ── */
+    .hand-header {
+      font-size: 0.78em;
+      color: #7f8c8d;
+      margin-bottom: 6px;
+    }
+    .hand-tiles {
+      display: flex;
+      gap: 2px;
+      overflow-x: auto;
+      align-items: flex-end;
+      min-height: 68px;
+      padding-bottom: 2px;
+      scrollbar-width: thin;
+      scrollbar-color: #0f3460 transparent;
+    }
+    .hand-tiles::-webkit-scrollbar { height: 3px; }
+    .hand-tiles::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 2px; }
+    .hand-tile-wrap {
+      position: relative;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .hand-tile-wrap:active { opacity: 0.55; }
+    .hand-tile-wrap img { display: block; border-radius: 4px; }
+    .remove-badge {
+      position: absolute;
+      top: -5px; right: -5px;
+      background: #e94560;
+      color: #fff;
+      font-size: 9px;
+      font-weight: bold;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .empty-hand { color: #7f8c8d; font-style: italic; font-size: 0.88em; padding: 18px 0; }
+
+    /* ── button rows ── */
+    .btn-row {
+      display: flex;
+      gap: 6px;
+      margin: 0 10px 8px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      flex: 1;
+      min-width: 70px;
+      background: #0f3460;
+      color: #ecf0f1;
+      border: none;
+      border-radius: 9px;
+      padding: 10px 6px;
+      font-size: 0.82em;
+      cursor: pointer;
+      transition: background 0.1s;
+      -webkit-appearance: none;
+    }
+    .btn:active { background: #e94560; color: #fff; }
+    .btn-random  { color: #f39c12; }
+    .btn-tenpai  { color: #9b59b6; }
+    .btn-onesuit { color: #1abc9c; }
+    .btn-analyze { color: #2ecc71; font-weight: 600; }
+    .btn-swap    { color: #3498db; }
+    .btn-back    { color: #e67e22; }
+    .btn-clear   { color: #e74c3c; }
+
+    /* ── tile input grid ── */
+    .suit-label {
+      font-size: 0.88em;
+      font-weight: 600;
+      margin: 8px 0 4px;
+    }
+    .suit-m { color: #e74c3c; }
+    .suit-p { color: #2ecc71; }
+    .suit-s { color: #3498db; }
+    .tile-input-row {
+      display: flex;
+      gap: 3px;
+      justify-content: space-between;
+    }
+    .input-tile-wrap {
+      flex: 1;
+      cursor: pointer;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .input-tile-wrap:active { opacity: 0.55; transform: scale(0.94); }
+    .input-tile-wrap img { width: 100%; height: auto; display: block; border-radius: 4px; }
+
+    /* ── results ── */
+    .result-win    { color: #2ecc71; font-size: 1.05em; font-weight: 600; margin-bottom: 6px; }
+    .result-tenpai { color: #f39c12; font-size: 1.0em;  font-weight: 600; margin-bottom: 6px; }
+    .result-lose   { color: #e74c3c; }
+    .result-info   { color: #3498db; }
+    .result-dim    { color: #7f8c8d; font-size: 0.85em; margin-top: 6px; }
+
+    .waits-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .wait-card {
+      background: #0a2540;
+      border-radius: 8px;
+      padding: 6px 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .wait-label { font-size: 0.75em; color: #7f8c8d; }
+    .wait-mult  { font-size: 0.85em; color: #f39c12; font-weight: 600; }
+
+    .swap-list { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .swap-card {
+      background: #0a2540;
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .swap-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      font-size: 0.82em;
+    }
+    .swap-kw { color: #9b59b6; font-size: 0.78em; }
+    .swap-mult { color: #f39c12; font-weight: 600; margin-left: auto; }
+    .swap-waits { display: flex; gap: 2px; align-items: center; }
+
+    .hand-echo { display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 10px; }
+
+    .spinner { color: #3498db; font-style: italic; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+
+<h1>四川麻将 Coach</h1>
+
+<!-- Hand display -->
+<div class="panel">
+  <div class="hand-header" id="handHeader">0 tiles</div>
+  <div class="hand-tiles" id="handTiles">
+    <span class="empty-hand">Tap a tile below to build your hand</span>
+  </div>
+</div>
+
+<!-- Generate buttons -->
+<div class="btn-row">
+  <button class="btn btn-random"  onclick="fetchRandom()">🎲 Random</button>
+  <button class="btn btn-tenpai"  onclick="fetchTenpai()">🀄 ≤2-Suit</button>
+  <button class="btn btn-onesuit" onclick="fetchOneSuit()">♟ 1-Suit 饼</button>
+</div>
+
+<!-- Tile input grid -->
+<div class="panel">
+  <div class="suit-label suit-m">万 (m)</div>
+  <div class="tile-input-row" id="row-m"></div>
+  <div class="suit-label suit-p">饼 (p)</div>
+  <div class="tile-input-row" id="row-p"></div>
+  <div class="suit-label suit-s">条 (s)</div>
+  <div class="tile-input-row" id="row-s"></div>
+</div>
+
+<!-- Edit / action buttons -->
+<div class="btn-row">
+  <button class="btn btn-back"    onclick="backspace()">⌫ Back</button>
+  <button class="btn btn-clear"   onclick="clearHand()">✕ Clear</button>
+  <button class="btn btn-analyze" onclick="analyze()">▶ Analyze</button>
+  <button class="btn btn-swap"    onclick="swap1()">1-Swap</button>
+</div>
+
+<!-- Results -->
+<div class="panel" id="results">
+  <div class="result-dim">Results will appear here.</div>
+</div>
+
+<script>
+// ── tile ordering (m1-m9, p1-p9, s1-s9) ──────────────────────────────────────
+const TILE_ORDER = {};
+['m','p','s'].forEach((s, si) => {
+  for (let n = 1; n <= 9; n++) TILE_ORDER[`${n}${s}`] = si * 9 + (n - 1);
+});
+
+// ── state ─────────────────────────────────────────────────────────────────────
+let hand = [];
+
+// ── tile image helpers ────────────────────────────────────────────────────────
+const INPUT_H = 50;   // px — height of input grid tiles (width auto via CSS flex)
+const HAND_H  = 64;   // px — height of hand display tiles
+
+function imgSrc(tile) { return `/tiles/${tile}.png`; }
+
+// Inline img HTML (for results text)
+function tileHtml(tile, h) {
+  const w = Math.round(h * 46 / 64);
+  return `<img src="${imgSrc(tile)}" width="${w}" height="${h}" style="border-radius:3px;vertical-align:middle">`;
+}
+
+// ── build tile input grid ─────────────────────────────────────────────────────
+['m','p','s'].forEach(s => {
+  const row = document.getElementById(`row-${s}`);
+  for (let n = 1; n <= 9; n++) {
+    const tile = `${n}${s}`;
+    const wrap = document.createElement('div');
+    wrap.className = 'input-tile-wrap';
+    wrap.onclick = () => addTile(tile);
+    const img = document.createElement('img');
+    img.src = imgSrc(tile);
+    img.alt = tile;
+    img.height = INPUT_H;
+    wrap.appendChild(img);
+    row.appendChild(wrap);
+  }
+});
+
+// ── hand manipulation ─────────────────────────────────────────────────────────
+function addTile(tile) {
+  if (hand.length >= 14) return;
+  hand.push(tile);
+  refreshHand();
+}
+
+function removeTile(idx) {
+  hand.splice(idx, 1);
+  refreshHand();
+}
+
+function backspace() {
+  if (hand.length) { hand.pop(); refreshHand(); }
+}
+
+function clearHand() {
+  hand = [];
+  refreshHand();
+  setResults('<div class="result-info">Hand cleared.</div>');
+}
+
+function refreshHand() {
+  hand.sort((a, b) => TILE_ORDER[a] - TILE_ORDER[b]);
+  const n = hand.length;
+  let hint = '';
+  if (n === 13)      hint = ' — ready (13)';
+  else if (n === 14) hint = ' — ready (14)';
+  else if (n > 14)   hint = ' ⚠ too many';
+  document.getElementById('handHeader').textContent =
+    `${n} tile${n !== 1 ? 's' : ''}${hint}  ·  tap tile to remove`;
+
+  const container = document.getElementById('handTiles');
+  container.innerHTML = '';
+  if (n === 0) {
+    container.innerHTML = '<span class="empty-hand">Tap a tile below to build your hand</span>';
+    return;
+  }
+  hand.forEach((tile, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'hand-tile-wrap';
+    wrap.onclick = () => removeTile(i);
+    const img = document.createElement('img');
+    img.src = imgSrc(tile);
+    img.alt = tile;
+    img.height = HAND_H;
+    img.width = Math.round(HAND_H * 46 / 64);
+    wrap.appendChild(img);
+    const badge = document.createElement('div');
+    badge.className = 'remove-badge';
+    badge.textContent = '×';
+    wrap.appendChild(badge);
+    container.appendChild(wrap);
+  });
+}
+
+// ── results helpers ───────────────────────────────────────────────────────────
+function setResults(html) {
+  document.getElementById('results').innerHTML = html;
+}
+function setLoading(msg) {
+  setResults(`<div class="spinner">⏳ ${msg}</div>`);
+}
+function handEcho() {
+  return `<div class="hand-echo">${hand.map(t => tileHtml(t, 32)).join('')}</div>`;
+}
+
+// ── API calls ─────────────────────────────────────────────────────────────────
+async function fetchRandom() {
+  setLoading('Generating random hand…');
+  const d = await fetch('/api/random').then(r => r.json());
+  hand = d.tiles; refreshHand(); setResults('');
+}
+async function fetchOneSuit() {
+  setLoading('Generating 1-suit 饼 hand…');
+  const d = await fetch('/api/random/one-suit').then(r => r.json());
+  hand = d.tiles; refreshHand(); setResults('');
+}
+async function fetchTenpai() {
+  setLoading('Generating ≤2-suit tenpai hand…');
+  const d = await fetch('/api/random/tenpai').then(r => r.json());
+  hand = d.tiles; refreshHand(); setResults('');
+}
+
+async function analyze() {
+  if (!hand.length) { setResults('<div class="result-lose">No tiles.</div>'); return; }
+  setLoading('Analyzing…');
+  const d = await fetch('/api/analyze', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({tiles: hand})
+  }).then(r => r.json());
+
+  let html = handEcho();
+
+  if (d.type === 'win') {
+    html += `<div class="result-win">✓ WIN!&ensp;${d.labels.join(' + ')}&ensp;×${d.multiplier}</div>`;
+  } else if (d.type === 'not_win') {
+    html += `<div class="result-lose">✗ Not a winning hand.</div>`;
+  } else if (d.type === 'tenpai') {
+    html += `<div class="result-tenpai">✓ Tenpai!&ensp;multiplier sum ×${d.multiplier_sum}</div>`;
+    html += `<div style="margin-top:8px;font-size:0.88em;color:#ecf0f1">Waiting on:</div>`;
+    html += '<div class="waits-grid">';
+    d.waits.forEach(w => {
+      html += `<div class="wait-card">
+        ${tileHtml(w.tile, 38)}
+        <div>
+          <div class="wait-label">${w.labels.join(' + ')}</div>
+          <div class="wait-mult">×${w.multiplier}</div>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  } else if (d.type === 'not_tenpai') {
+    html += `<div class="result-lose">✗ Not tenpai.</div>`;
+    html += `<div class="result-dim">Use 1-Swap to find improving discards.</div>`;
+  } else {
+    html += `<div class="result-info">Need 13 tiles (tenpai) or 14 tiles (win check). Have ${d.count}.</div>`;
+  }
+  setResults(html);
+}
+
+async function swap1() {
+  if (hand.length !== 13) {
+    setResults(`<div class="result-lose">1-Swap needs exactly 13 tiles (have ${hand.length}).</div>`);
+    return;
+  }
+  setLoading('Searching for 1-tile improvements…');
+  const d = await fetch('/api/swap1', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({tiles: hand})
+  }).then(r => r.json());
+
+  let html = handEcho();
+
+  if (!d.swaps || d.swaps.length === 0) {
+    html += `<div class="result-info">No single-tile swap leads to tenpai.</div>`;
+    setResults(html); return;
+  }
+
+  html += `<div class="result-tenpai">${d.swaps.length} swap(s) to tenpai:</div>`;
+  html += '<div class="swap-list">';
+  d.swaps.forEach(s => {
+    const waitImgs = s.waits.map(w => tileHtml(w, 28)).join('');
+    html += `<div class="swap-card">
+      <div class="swap-row">
+        <span class="swap-kw">discard</span>
+        ${tileHtml(s.discard, 32)}
+        <span class="swap-kw">draw</span>
+        ${tileHtml(s.draw, 32)}
+        <span class="swap-kw">waits</span>
+        <div class="swap-waits">${waitImgs}</div>
+        <span class="swap-mult">×${s.multiplier_sum}</span>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  setResults(html);
+}
+
+// ── init ──────────────────────────────────────────────────────────────────────
+fetchRandom();
+</script>
+</body>
+</html>
