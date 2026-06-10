@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>出牌练习</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background: #1a1a2e;
+      color: #ecf0f1;
+      font-family: -apple-system, "Helvetica Neue", sans-serif;
+      min-height: 100dvh;
+      padding-bottom: env(safe-area-inset-bottom, 16px);
+    }
+
+    /* ── nav bar ── */
+    .navbar {
+      display: flex;
+      align-items: center;
+      padding: 12px 14px 8px;
+      gap: 10px;
+    }
+    .back-btn {
+      background: #0f3460;
+      color: #ecf0f1;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 13px;
+      font-size: 0.85em;
+      cursor: pointer;
+      -webkit-appearance: none;
+      text-decoration: none;
+    }
+    .back-btn:active { background: #e94560; }
+    .nav-title {
+      color: #2ecc71;
+      font-size: 1.15em;
+      font-weight: 600;
+    }
+
+    /* ── panels ── */
+    .panel {
+      background: #16213e;
+      margin: 0 10px 8px;
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+
+    .panel-label {
+      font-size: 0.78em;
+      color: #7f8c8d;
+      margin-bottom: 8px;
+    }
+
+    /* ── 14-tile grid: 2 rows of 7 ── */
+    .hand-row {
+      display: flex;
+      gap: 3px;
+      justify-content: flex-start;
+    }
+    .hand-row + .hand-row { margin-top: 6px; }
+
+    .tile-slot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      flex: 1;
+      max-width: 46px;
+    }
+
+    .tile-slot img {
+      width: 100%;
+      height: auto;
+      border-radius: 5px;
+      border: 2px solid transparent;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      display: block;
+    }
+
+    /* score badge below each tile */
+    .score {
+      font-size: 0.72em;
+      font-weight: 700;
+      height: 16px;
+      line-height: 16px;
+      color: #7f8c8d;
+      letter-spacing: -0.02em;
+    }
+    .score.hidden { visibility: hidden; }
+    .score.zero   { color: #4a5568; }
+    .score.low    { color: #e67e22; }
+    .score.mid    { color: #f39c12; }
+    .score.high   { color: #2ecc71; }
+
+    /* highlight the best tile(s) */
+    .tile-slot.best img {
+      border-color: #2ecc71;
+      box-shadow: 0 0 8px rgba(46, 204, 113, 0.7);
+    }
+    .tile-slot.best .score { color: #2ecc71; }
+
+    /* ── buttons ── */
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin: 0 10px 8px;
+    }
+    .btn {
+      flex: 1;
+      background: #0f3460;
+      color: #ecf0f1;
+      border: none;
+      border-radius: 9px;
+      padding: 11px 6px;
+      font-size: 0.88em;
+      cursor: pointer;
+      -webkit-appearance: none;
+    }
+    .btn:active { background: #e94560; color: #fff; }
+    .btn-gen     { color: #1abc9c; font-weight: 600; }
+    .btn-analyze { color: #2ecc71; font-weight: 600; }
+
+    /* ── result panel ── */
+    .result-dim    { color: #7f8c8d; font-size: 0.85em; }
+    .result-info   { color: #3498db; font-size: 0.88em; }
+    .result-tenpai { color: #f39c12; font-weight: 600; margin-bottom: 6px; }
+    .result-zero   { color: #4a5568; font-size: 0.85em; font-style: italic; }
+
+    .summary-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-top: 6px;
+    }
+    .summary-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #0a2540;
+      border-radius: 8px;
+      padding: 6px 10px;
+    }
+    .summary-row.best-row { border: 1px solid #2ecc71; }
+    .summary-score {
+      font-size: 1.05em;
+      font-weight: 700;
+      min-width: 28px;
+      color: #f39c12;
+    }
+    .summary-score.zero { color: #4a5568; font-size: 0.88em; }
+    .summary-best-label {
+      font-size: 0.72em;
+      color: #2ecc71;
+      margin-left: auto;
+    }
+
+    .spinner { color: #3498db; font-style: italic; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+
+<div class="navbar">
+  <a href="/" class="back-btn">← 返回</a>
+  <span class="nav-title">出牌练习 · 饼</span>
+</div>
+
+<!-- 14-tile display -->
+<div class="panel">
+  <div class="panel-label" id="handLabel">生成14张饼手牌，分析最优出牌</div>
+  <div class="hand-row" id="row1"></div>
+  <div class="hand-row" id="row2"></div>
+</div>
+
+<!-- action buttons -->
+<div class="btn-row">
+  <button class="btn btn-gen"     onclick="generate()">♟ 生成手牌</button>
+  <button class="btn btn-analyze" onclick="analyze()" id="btnAnalyze" disabled>▶ 分析出牌</button>
+</div>
+
+<!-- results -->
+<div class="panel" id="results">
+  <div class="result-dim">点击「生成手牌」开始。</div>
+</div>
+
+<script>
+// ── tile order (m1-m9, p1-p9, s1-s9) ─────────────────────────────────────────
+const TILE_ORDER = {};
+['m','p','s'].forEach((s, si) => {
+  for (let n = 1; n <= 9; n++) TILE_ORDER[`${n}${s}`] = si * 9 + (n - 1);
+});
+
+const HAND_H = 58;  // tile height in px
+
+let hand = [];       // sorted tile strings
+let analyzed = false;
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+function imgSrc(tile) { return `/tiles/${tile}.png`; }
+
+function setResults(html) { document.getElementById('results').innerHTML = html; }
+function setLoading(msg)  { setResults(`<div class="spinner">⏳ ${msg}</div>`); }
+
+// ── render hand grid ──────────────────────────────────────────────────────────
+function renderHand(scores) {
+  // scores: array of {tile, multiplier_sum} in hand order, or null (before analyze)
+  const r1 = document.getElementById('row1');
+  const r2 = document.getElementById('row2');
+  r1.innerHTML = '';
+  r2.innerHTML = '';
+
+  if (!hand.length) return;
+
+  const maxScore = scores ? Math.max(...scores.map(s => s.multiplier_sum)) : 0;
+
+  hand.forEach((tile, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'tile-slot';
+    slot.id = `slot-${i}`;
+
+    const img = document.createElement('img');
+    img.src = imgSrc(tile);
+    img.height = HAND_H;
+    img.alt = tile;
+    slot.appendChild(img);
+
+    const scoreBadge = document.createElement('div');
+    scoreBadge.className = 'score';
+    scoreBadge.id = `score-${i}`;
+
+    if (scores) {
+      const ms = scores[i].multiplier_sum;
+      scoreBadge.textContent = ms;
+      if (ms === 0) {
+        scoreBadge.classList.add('zero');
+      } else if (maxScore > 0) {
+        const ratio = ms / maxScore;
+        if (ratio >= 1.0) {
+          scoreBadge.classList.add('high');
+          slot.classList.add('best');
+        } else if (ratio >= 0.6) {
+          scoreBadge.classList.add('mid');
+        } else {
+          scoreBadge.classList.add('low');
+        }
+      }
+    } else {
+      scoreBadge.classList.add('hidden');
+    }
+
+    slot.appendChild(scoreBadge);
+    (i < 7 ? r1 : r2).appendChild(slot);
+  });
+}
+
+// ── generate ──────────────────────────────────────────────────────────────────
+async function generate() {
+  setLoading('生成14张饼手牌…');
+  document.getElementById('btnAnalyze').disabled = true;
+  analyzed = false;
+
+  const d = await fetch('/api/random/no-win-p14').then(r => r.json());
+  hand = d.tiles.sort((a, b) => TILE_ORDER[a] - TILE_ORDER[b]);
+
+  renderHand(null);
+  document.getElementById('handLabel').textContent =
+    `14张饼手牌（未胡）· 点击「分析出牌」查看有效牌力`;
+  document.getElementById('btnAnalyze').disabled = false;
+  setResults('<div class="result-dim">点击「分析出牌」查看打出每张牌后的有效牌力。</div>');
+}
+
+// ── analyze ───────────────────────────────────────────────────────────────────
+async function analyze() {
+  if (!hand.length) return;
+  setLoading('计算每张出牌的有效牌力…');
+
+  const d = await fetch('/api/analyze14', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({tiles: hand})
+  }).then(r => r.json());
+
+  const scores = d.results;  // [{tile, multiplier_sum}, ...]
+  const maxScore = Math.max(...scores.map(s => s.multiplier_sum));
+
+  renderHand(scores);
+  analyzed = true;
+
+  // Build result summary
+  // Group by tile value (they have same score)
+  const seen = new Set();
+  const rows = [];
+  scores.forEach(s => {
+    if (!seen.has(s.tile)) {
+      seen.add(s.tile);
+      rows.push(s);
+    }
+  });
+  rows.sort((a, b) => b.multiplier_sum - a.multiplier_sum);
+
+  let html = '';
+
+  if (maxScore === 0) {
+    html += `<div class="result-zero">打出任何一张牌均无法听牌。</div>`;
+  } else {
+    html += `<div class="result-tenpai">有效牌力最高：${maxScore}</div>`;
+  }
+
+  html += '<div class="summary-grid">';
+  rows.forEach(s => {
+    const isBest = s.multiplier_sum === maxScore && maxScore > 0;
+    html += `<div class="summary-row${isBest ? ' best-row' : ''}">
+      <img src="${imgSrc(s.tile)}" height="36" style="border-radius:3px">
+      <span class="summary-score${s.multiplier_sum === 0 ? ' zero' : ''}">
+        ${s.multiplier_sum === 0 ? '无法听牌' : s.multiplier_sum}
+      </span>
+      ${isBest ? '<span class="summary-best-label">★ 最优</span>' : ''}
+    </div>`;
+  });
+  html += '</div>';
+
+  setResults(html);
+  document.getElementById('handLabel').textContent =
+    `绿框 = 最优出牌 · 数字 = 有效牌力`;
+}
+
+// ── init ──────────────────────────────────────────────────────────────────────
+generate();
+</script>
+</body>
+</html>

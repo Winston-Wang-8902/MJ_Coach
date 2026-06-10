@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>四川麻将 Coach</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background: #1a1a2e;
+      color: #ecf0f1;
+      font-family: -apple-system, "Helvetica Neue", sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 20px env(safe-area-inset-bottom, 16px);
+    }
+
+    h1 {
+      color: #e94560;
+      font-size: 1.6em;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #7f8c8d;
+      font-size: 0.9em;
+      margin-bottom: 48px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 340px;
+      background: #16213e;
+      border-radius: 16px;
+      padding: 22px 20px;
+      margin-bottom: 16px;
+      cursor: pointer;
+      text-decoration: none;
+      display: block;
+      border: 2px solid transparent;
+      transition: border-color 0.15s;
+      -webkit-appearance: none;
+    }
+    .card:active { border-color: #e94560; }
+
+    .card-icon { font-size: 2.2em; margin-bottom: 8px; }
+
+    .card-title {
+      font-size: 1.15em;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .card-desc {
+      font-size: 0.82em;
+      color: #7f8c8d;
+      line-height: 1.45;
+    }
+
+    .card-coach  .card-title { color: #e94560; }
+    .card-study  .card-title { color: #2ecc71; }
+  </style>
+</head>
+<body>
+
+  <h1>四川麻将 Coach</h1>
+  <p class="subtitle">选择模式</p>
+
+  <a href="/coach" class="card card-coach">
+    <div class="card-icon">🀄</div>
+    <div class="card-title">牌局教练</div>
+    <div class="card-desc">输入13或14张牌，检测胡牌、听牌，并寻找最优换牌方案。</div>
+  </a>
+
+  <a href="/study" class="card card-study">
+    <div class="card-icon">📊</div>
+    <div class="card-title">出牌练习</div>
+    <div class="card-desc">随机生成14张饼（未胡），分析打出每张牌后的听牌有效牌力，训练出牌判断。</div>
+  </a>
+
+</body>
+</html>

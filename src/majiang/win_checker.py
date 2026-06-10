@@ -515,6 +515,15 @@ def check_tenpai(tiles: list[Tile] | list[str]) -> TenpaiResult:
     return TenpaiResult(is_tenpai=bool(waits), waits=waits)
 
 
+def random_no_win_p14() -> list[Tile]:
+    """Return a random 14-tile 饼 hand that is not a winning hand."""
+    deck = [Tile(f"{n}p") for n in "123456789"] * 4
+    while True:
+        hand = _random.sample(deck, 14)
+        if not is_winning_hand(hand):
+            return hand
+
+
 def random_one_suit_hand() -> list[Tile]:
     """Return a random 13-tile hand drawn from 饼 (p) tiles only."""
     deck = [Tile(f"{n}p") for n in "123456789"] * 4
