@@ -39,18 +39,16 @@
       color: #7f8c8d;
       margin-bottom: 6px;
     }
-    .hand-tiles {
+    .hand-row {
       display: flex;
       gap: 2px;
-      overflow-x: auto;
       align-items: flex-end;
       min-height: 68px;
-      padding-bottom: 2px;
-      scrollbar-width: thin;
-      scrollbar-color: #0f3460 transparent;
+      flex-wrap: nowrap;
     }
-    .hand-tiles::-webkit-scrollbar { height: 3px; }
-    .hand-tiles::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 2px; }
+    .hand-row + .hand-row {
+      margin-top: 4px;
+    }
     .hand-tile-wrap {
       position: relative;
       flex-shrink: 0;
@@ -93,13 +91,12 @@
       -webkit-appearance: none;
     }
     .btn:active { background: #e94560; color: #fff; }
-    .btn-random  { color: #f39c12; }
     .btn-tenpai  { color: #9b59b6; }
     .btn-onesuit { color: #1abc9c; }
     .btn-analyze { color: #2ecc71; font-weight: 600; }
     .btn-swap    { color: #3498db; }
-    .btn-back    { color: #e67e22; }
     .btn-clear   { color: #e74c3c; }
+    .btn-hide    { color: #95a5a6; }
 
     /* ── tile input grid ── */
     .suit-label {
@@ -169,18 +166,18 @@
 
 <h1>四川麻将 Coach</h1>
 
-<!-- Hand display -->
+<!-- Hand display: two rows (7 + remainder) -->
 <div class="panel">
   <div class="hand-header" id="handHeader">0 tiles</div>
-  <div class="hand-tiles" id="handTiles">
+  <div class="hand-row" id="handRow1">
     <span class="empty-hand">Tap a tile below to build your hand</span>
   </div>
+  <div class="hand-row" id="handRow2"></div>
 </div>
 
 <!-- Generate buttons -->
 <div class="btn-row">
-  <button class="btn btn-random"  onclick="fetchRandom()">🎲 Random</button>
-  <button class="btn btn-tenpai"  onclick="fetchTenpai()">🀄 ≤2-Suit</button>
+  <button class="btn btn-tenpai"  onclick="fetchTenpai()">🀄 ≤2-Suit Tenpai</button>
   <button class="btn btn-onesuit" onclick="fetchOneSuit()">♟ 1-Suit 饼</button>
 </div>
 
@@ -194,12 +191,12 @@
   <div class="tile-input-row" id="row-s"></div>
 </div>
 
-<!-- Edit / action buttons -->
+<!-- Action buttons -->
 <div class="btn-row">
-  <button class="btn btn-back"    onclick="backspace()">⌫ Back</button>
   <button class="btn btn-clear"   onclick="clearHand()">✕ Clear</button>
   <button class="btn btn-analyze" onclick="analyze()">▶ Analyze</button>
   <button class="btn btn-swap"    onclick="swap1()">1-Swap</button>
+  <button class="btn btn-hide"    onclick="toggleResults()" id="btnHide">Hide Analysis</button>
 </div>
 
 <!-- Results -->
@@ -216,14 +213,13 @@ const TILE_ORDER = {};
 
 // ── state ─────────────────────────────────────────────────────────────────────
 let hand = [];
+let resultsVisible = true;
 
 // ── tile image helpers ────────────────────────────────────────────────────────
-const INPUT_H = 50;   // px — height of input grid tiles (width auto via CSS flex)
-const HAND_H  = 64;   // px — height of hand display tiles
+const HAND_H = 64;
 
 function imgSrc(tile) { return `/tiles/${tile}.png`; }
 
-// Inline img HTML (for results text)
 function tileHtml(tile, h) {
   const w = Math.round(h * 46 / 64);
   return `<img src="${imgSrc(tile)}" width="${w}" height="${h}" style="border-radius:3px;vertical-align:middle">`;
@@ -240,7 +236,6 @@ function tileHtml(tile, h) {
     const img = document.createElement('img');
     img.src = imgSrc(tile);
     img.alt = tile;
-    img.height = INPUT_H;
     wrap.appendChild(img);
     row.appendChild(wrap);
   }
@@ -258,14 +253,27 @@ function removeTile(idx) {
   refreshHand();
 }
 
-function backspace() {
-  if (hand.length) { hand.pop(); refreshHand(); }
-}
-
 function clearHand() {
   hand = [];
   refreshHand();
   setResults('<div class="result-info">Hand cleared.</div>');
+}
+
+function makeTileWrap(tile, idx) {
+  const wrap = document.createElement('div');
+  wrap.className = 'hand-tile-wrap';
+  wrap.onclick = () => removeTile(idx);
+  const img = document.createElement('img');
+  img.src = imgSrc(tile);
+  img.alt = tile;
+  img.height = HAND_H;
+  img.width = Math.round(HAND_H * 46 / 64);
+  wrap.appendChild(img);
+  const badge = document.createElement('div');
+  badge.className = 'remove-badge';
+  badge.textContent = '×';
+  wrap.appendChild(badge);
+  return wrap;
 }
 
 function refreshHand() {
@@ -278,33 +286,30 @@ function refreshHand() {
   document.getElementById('handHeader').textContent =
     `${n} tile${n !== 1 ? 's' : ''}${hint}  ·  tap tile to remove`;
 
-  const container = document.getElementById('handTiles');
-  container.innerHTML = '';
+  const row1 = document.getElementById('handRow1');
+  const row2 = document.getElementById('handRow2');
+  row1.innerHTML = '';
+  row2.innerHTML = '';
+
   if (n === 0) {
-    container.innerHTML = '<span class="empty-hand">Tap a tile below to build your hand</span>';
+    row1.innerHTML = '<span class="empty-hand">Tap a tile below to build your hand</span>';
     return;
   }
   hand.forEach((tile, i) => {
-    const wrap = document.createElement('div');
-    wrap.className = 'hand-tile-wrap';
-    wrap.onclick = () => removeTile(i);
-    const img = document.createElement('img');
-    img.src = imgSrc(tile);
-    img.alt = tile;
-    img.height = HAND_H;
-    img.width = Math.round(HAND_H * 46 / 64);
-    wrap.appendChild(img);
-    const badge = document.createElement('div');
-    badge.className = 'remove-badge';
-    badge.textContent = '×';
-    wrap.appendChild(badge);
-    container.appendChild(wrap);
+    const wrap = makeTileWrap(tile, i);
+    (i < 7 ? row1 : row2).appendChild(wrap);
   });
 }
 
 // ── results helpers ───────────────────────────────────────────────────────────
 function setResults(html) {
-  document.getElementById('results').innerHTML = html;
+  const el = document.getElementById('results');
+  el.innerHTML = html;
+  if (!resultsVisible) {
+    el.style.display = '';
+    resultsVisible = true;
+    document.getElementById('btnHide').textContent = 'Hide Analysis';
+  }
 }
 function setLoading(msg) {
   setResults(`<div class="spinner">⏳ ${msg}</div>`);
@@ -312,13 +317,14 @@ function setLoading(msg) {
 function handEcho() {
   return `<div class="hand-echo">${hand.map(t => tileHtml(t, 32)).join('')}</div>`;
 }
+function toggleResults() {
+  const el = document.getElementById('results');
+  resultsVisible = !resultsVisible;
+  el.style.display = resultsVisible ? '' : 'none';
+  document.getElementById('btnHide').textContent = resultsVisible ? 'Hide Analysis' : 'Show Analysis';
+}
 
 // ── API calls ─────────────────────────────────────────────────────────────────
-async function fetchRandom() {
-  setLoading('Generating random hand…');
-  const d = await fetch('/api/random').then(r => r.json());
-  hand = d.tiles; refreshHand(); setResults('');
-}
 async function fetchOneSuit() {
   setLoading('Generating 1-suit 饼 hand…');
   const d = await fetch('/api/random/one-suit').then(r => r.json());
@@ -340,7 +346,6 @@ async function analyze() {
   }).then(r => r.json());
 
   let html = handEcho();
-
   if (d.type === 'win') {
     html += `<div class="result-win">✓ WIN!&ensp;${d.labels.join(' + ')}&ensp;×${d.multiplier}</div>`;
   } else if (d.type === 'not_win') {
@@ -381,12 +386,10 @@ async function swap1() {
   }).then(r => r.json());
 
   let html = handEcho();
-
   if (!d.swaps || d.swaps.length === 0) {
     html += `<div class="result-info">No single-tile swap leads to tenpai.</div>`;
     setResults(html); return;
   }
-
   html += `<div class="result-tenpai">${d.swaps.length} swap(s) to tenpai:</div>`;
   html += '<div class="swap-list">';
   d.swaps.forEach(s => {
@@ -406,9 +409,6 @@ async function swap1() {
   html += '</div>';
   setResults(html);
 }
-
-// ── init ──────────────────────────────────────────────────────────────────────
-fetchRandom();
 </script>
 </body>
 </html>
