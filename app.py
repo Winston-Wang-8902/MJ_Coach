@@ -77,6 +77,7 @@ def api_analyze():
                         "tile": str(w.tile),
                         "labels": [ht.label for ht in w.result.hand_types],
                         "multiplier": w.result.multiplier,
+                        "remaining": w.remaining,
                     }
                     for w in r.waits
                 ],

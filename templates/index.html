@@ -351,7 +351,7 @@ async function analyze() {
   } else if (d.type === 'not_win') {
     html += `<div class="result-lose">✗ Not a winning hand.</div>`;
   } else if (d.type === 'tenpai') {
-    html += `<div class="result-tenpai">✓ Tenpai!&ensp;multiplier sum ×${d.multiplier_sum}</div>`;
+    html += `<div class="result-tenpai">✓ Tenpai!&ensp;有效牌力 ${d.multiplier_sum}</div>`;
     html += `<div style="margin-top:8px;font-size:0.88em;color:#ecf0f1">Waiting on:</div>`;
     html += '<div class="waits-grid">';
     d.waits.forEach(w => {
@@ -359,7 +359,7 @@ async function analyze() {
         ${tileHtml(w.tile, 38)}
         <div>
           <div class="wait-label">${w.labels.join(' + ')}</div>
-          <div class="wait-mult">×${w.multiplier}</div>
+          <div class="wait-mult">×${w.multiplier} &nbsp;剩${w.remaining}张</div>
         </div>
       </div>`;
     });
@@ -402,7 +402,7 @@ async function swap1() {
         ${tileHtml(s.draw, 32)}
         <span class="swap-kw">waits</span>
         <div class="swap-waits">${waitImgs}</div>
-        <span class="swap-mult">×${s.multiplier_sum}</span>
+        <span class="swap-mult">有效${s.multiplier_sum}</span>
       </div>
     </div>`;
   });

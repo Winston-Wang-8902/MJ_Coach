@@ -310,7 +310,8 @@ def _tenpai_waits_counter(
     for candidate in ALL_TILES:
         if candidate == skip1 or candidate == skip2:
             continue
-        if counts13.get(candidate, 0) >= 4:
+        n_in_hand = counts13.get(candidate, 0)
+        if n_in_hand >= 4:
             continue
         counts13[candidate] += 1
         result = _analyze_counter(counts13)     # 14 tiles
@@ -318,7 +319,8 @@ def _tenpai_waits_counter(
         if counts13[candidate] == 0:
             del counts13[candidate]
         if result.is_winner:
-            waits.append(WaitingTile(tile=candidate, result=result))
+            waits.append(WaitingTile(tile=candidate, result=result,
+                                     remaining=4 - n_in_hand))
     return waits
 
 
@@ -437,10 +439,11 @@ class WaitingTile:
     """One tile that completes a tenpai hand, with the resulting WinResult."""
     tile: Tile
     result: WinResult
+    remaining: int = 4  # copies still drawable (4 − copies already in hand)
 
     def __str__(self) -> str:
         labels = "+".join(ht.label for ht in self.result.hand_types)
-        return f"{self.tile}(×{self.result.multiplier} {labels})"
+        return f"{self.tile}({self.remaining}张 ×{self.result.multiplier} {labels})"
 
 
 @dataclass
@@ -462,7 +465,9 @@ class TenpaiResult:
 
     @property
     def multiplier_sum(self) -> int:
-        return sum(w.result.multiplier for w in self.waits)
+        # Weight each wait's multiplier by how many copies of that tile can
+        # still be drawn (4 minus the copies already in the 13-tile hand).
+        return sum(w.remaining * w.result.multiplier for w in self.waits)
 
     def __str__(self) -> str:
         if not self.is_tenpai:
@@ -499,11 +504,13 @@ def check_tenpai(tiles: list[Tile] | list[str]) -> TenpaiResult:
     waits: list[WaitingTile] = []
 
     for candidate in ALL_TILES:
-        if counts.get(candidate, 0) >= 4:
+        n_in_hand = counts.get(candidate, 0)
+        if n_in_hand >= 4:
             continue                        # tile exhausted; can't be drawn
         result = analyze_hand(tiles + [candidate])
         if result.is_winner:
-            waits.append(WaitingTile(tile=candidate, result=result))
+            waits.append(WaitingTile(tile=candidate, result=result,
+                                     remaining=4 - n_in_hand))
 
     return TenpaiResult(is_tenpai=bool(waits), waits=waits)
 
