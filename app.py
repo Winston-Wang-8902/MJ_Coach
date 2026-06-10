@@ -103,16 +103,28 @@ def api_analyze14():
     if len(tiles) != 14:
         return jsonify({"error": "Need 14 tiles"}), 400
 
-    # Cache results by tile value to avoid redundant tenpai checks
-    cache: dict[str, int] = {}
+    # Cache by tile value — same tile always produces the same 13-tile remainder
+    cache: dict[str, dict] = {}
     results = []
     for i, tile in enumerate(tiles):
         key = str(tile)
         if key not in cache:
             remaining = [t for j, t in enumerate(tiles) if j != i]
             r = check_tenpai(remaining)
-            cache[key] = r.multiplier_sum if r.is_tenpai else 0
-        results.append({"tile": key, "multiplier_sum": cache[key]})
+            cache[key] = {
+                "tile": key,
+                "multiplier_sum": r.multiplier_sum if r.is_tenpai else 0,
+                "waits": [
+                    {
+                        "tile": str(w.tile),
+                        "labels": [ht.label for ht in w.result.hand_types],
+                        "multiplier": w.result.multiplier,
+                        "remaining": w.remaining,
+                    }
+                    for w in r.waits
+                ],
+            }
+        results.append(cache[key])
 
     return jsonify({"results": results})
 
