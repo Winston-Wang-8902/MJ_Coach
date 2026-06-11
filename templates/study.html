@@ -377,23 +377,19 @@ function setAHButton(state) {
     icon.textContent  = '▲';
     label.textContent = '隐藏';
     analysisState = 'visible';
-  } else if (state === 'hidden') {
-    btn.disabled = false;
-    icon.textContent  = '▼';
-    label.textContent = '显示';
-    analysisState = 'hidden';
   }
 }
 
 async function analyzeOrHide() {
   if (analysisState === 'none') {
     await runAnalysis();
-  } else if (analysisState === 'visible') {
-    document.getElementById('results').style.display = 'none';
-    setAHButton('hidden');
   } else {
-    document.getElementById('results').style.display = '';
-    setAHButton('visible');
+    // Hide: clear results content, strip hand highlights, reset to unanalyzed
+    lastScores = null;
+    renderHand(null);
+    document.getElementById('handLabel').textContent = '14张饼手牌（未胡）';
+    setResults('<div class="result-dim">点击「分析」查看每种出牌的听牌分析。</div>');
+    setAHButton('ready');
   }
 }
 
