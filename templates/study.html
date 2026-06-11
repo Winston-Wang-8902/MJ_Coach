@@ -9,203 +9,323 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
-    body {
+    html, body {
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
       background: #1a1a2e;
-      color: #ecf0f1;
-      font-family: -apple-system, "Helvetica Neue", sans-serif;
-      min-height: 100dvh;
-      padding-bottom: env(safe-area-inset-bottom, 16px);
     }
 
-    /* ── nav ── */
+    /* ── Landscape rotate wrapper ──────────────────────────────────────────── */
+    .landscape {
+      position: fixed;
+      /* logical dimensions in the rotated world */
+      width: 100svh;
+      height: 100svw;
+      /* center in portrait viewport, then rotate 90° CW */
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(90deg);
+      transform-origin: center center;
+      /* layout */
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px 10px env(safe-area-inset-right, 8px) 10px;
+      overflow: hidden;
+      color: #ecf0f1;
+      font-family: -apple-system, "Helvetica Neue", sans-serif;
+    }
+
+    /* ── Nav bar ───────────────────────────────────────────────────────────── */
     .navbar {
       display: flex;
       align-items: center;
-      padding: 12px 14px 8px;
       gap: 10px;
+      flex-shrink: 0;
+      height: 28px;
     }
     .back-btn {
       background: #0f3460;
       color: #ecf0f1;
       border: none;
-      border-radius: 8px;
-      padding: 7px 13px;
-      font-size: 0.85em;
+      border-radius: 7px;
+      padding: 5px 12px;
+      font-size: 0.78em;
       cursor: pointer;
       text-decoration: none;
       -webkit-appearance: none;
     }
     .back-btn:active { background: #e94560; }
-    .nav-title { color: #2ecc71; font-size: 1.1em; font-weight: 600; }
+    .nav-title { color: #2ecc71; font-size: 0.95em; font-weight: 600; }
 
-    /* ── panels ── */
-    .panel {
+    /* ── Hand panel ────────────────────────────────────────────────────────── */
+    .hand-panel {
       background: #16213e;
-      margin: 0 10px 8px;
-      border-radius: 12px;
-      padding: 10px 12px;
+      border-radius: 11px;
+      padding: 7px 10px 8px;
+      flex-shrink: 0;
     }
-    .panel-label { font-size: 0.76em; color: #7f8c8d; margin-bottom: 8px; }
+    .hand-label {
+      font-size: 0.68em;
+      color: #7f8c8d;
+      margin-bottom: 5px;
+    }
+    .hand-row {
+      display: flex;
+      gap: 3px;
+      justify-content: center;
+      align-items: flex-end;
+    }
 
-    /* ── 14-tile grid ── */
-    .hand-row { display: flex; gap: 3px; }
-    .hand-row + .hand-row { margin-top: 6px; }
-
+    /* ── Tile slots in hand ────────────────────────────────────────────────── */
     .tile-slot {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 3px;
-      flex: 1;
-      max-width: 46px;
+      gap: 2px;
     }
     .tile-slot img {
-      width: 100%;
-      height: auto;
-      border-radius: 5px;
+      border-radius: 4px;
       border: 2px solid transparent;
-      transition: border-color 0.15s, box-shadow 0.15s;
       display: block;
+      height: 50px;
+      width: auto;
+      transition: border-color 0.15s, box-shadow 0.15s, opacity 0.15s;
     }
     .tile-slot.best img {
       border-color: #2ecc71;
-      box-shadow: 0 0 8px rgba(46,204,113,0.65);
+      box-shadow: 0 0 8px rgba(46,204,113,0.7);
     }
-    .tile-slot.zero img { opacity: 0.45; }
+    .tile-slot.zero img { opacity: 0.35; }
 
-    .score {
-      font-size: 0.7em;
+    .tile-score {
+      font-size: 0.6em;
       font-weight: 700;
-      height: 15px;
-      line-height: 15px;
-      color: #7f8c8d;
+      height: 12px;
+      line-height: 12px;
+      color: #4a5568;
     }
-    .score.hidden    { visibility: hidden; }
-    .score.is-zero   { color: #3d4d5c; }
-    .score.is-low    { color: #e67e22; }
-    .score.is-mid    { color: #f39c12; }
-    .score.is-best   { color: #2ecc71; }
+    .tile-score.hidden { visibility: hidden; }
+    .tile-score.is-zero { color: #2d3748; }
+    .tile-score.is-low  { color: #c0392b; }
+    .tile-score.is-mid  { color: #e67e22; }
+    .tile-score.is-high { color: #f39c12; }
+    .tile-score.is-best { color: #2ecc71; }
 
-    /* ── buttons ── */
-    .btn-row { display: flex; gap: 8px; margin: 0 10px 8px; }
-    .btn {
+    /* ── Main body: results + buttons ─────────────────────────────────────── */
+    .main-body {
+      display: flex;
+      gap: 8px;
       flex: 1;
-      background: #0f3460;
-      color: #ecf0f1;
-      border: none;
-      border-radius: 9px;
-      padding: 11px 6px;
-      font-size: 0.88em;
-      cursor: pointer;
-      -webkit-appearance: none;
+      min-height: 0;
+      overflow: hidden;
     }
-    .btn:active { background: #e94560; color: #fff; }
-    .btn-gen     { color: #1abc9c; font-weight: 600; }
-    .btn-analyze { color: #2ecc71; font-weight: 600; }
-    .btn:disabled { opacity: 0.4; pointer-events: none; }
 
-    /* ── discard cards ── */
-    .discard-list { display: flex; flex-direction: column; gap: 8px; }
+    /* ── Results panel ─────────────────────────────────────────────────────── */
+    .results-panel {
+      background: #16213e;
+      border-radius: 11px;
+      padding: 10px 12px;
+      flex: 1;
+      min-width: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ── Button panel: 2×2 grid ────────────────────────────────────────────── */
+    .btn-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 8px;
+      width: 168px;
+      flex-shrink: 0;
+    }
+
+    .btn {
+      background: #16213e;
+      border: 1.5px solid #1e3a5f;
+      border-radius: 14px;
+      color: #ecf0f1;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 4px;
+      -webkit-appearance: none;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .btn:active { background: #0f3460; border-color: #e94560; }
+    .btn:disabled { opacity: 0.35; pointer-events: none; }
+
+    .btn-icon {
+      font-size: 1.55em;
+      line-height: 1;
+    }
+    .btn-label {
+      font-size: 0.72em;
+      font-weight: 600;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    .btn-gen     { --accent: #1abc9c; }
+    .btn-analyze { --accent: #2ecc71; }
+    .btn-share   { --accent: #3498db; }
+    .btn-record  { --accent: #e74c3c; }
+
+    .btn-gen     .btn-icon,
+    .btn-gen     .btn-label { color: #1abc9c; }
+    .btn-analyze .btn-icon,
+    .btn-analyze .btn-label { color: #2ecc71; }
+    .btn-share   .btn-icon,
+    .btn-share   .btn-label { color: #3498db; }
+    .btn-record  .btn-icon,
+    .btn-record  .btn-label { color: #e74c3c; }
+
+    /* Record active state */
+    .btn-record.recording {
+      background: #2d0a0a;
+      border-color: #e74c3c;
+      animation: pulse-red 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse-red {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(231,76,60,0); }
+      50%       { box-shadow: 0 0 0 5px rgba(231,76,60,0.35); }
+    }
+
+    /* ── Discard cards in results ──────────────────────────────────────────── */
+    .discard-list { display: flex; flex-direction: column; gap: 6px; }
 
     .discard-card {
-      background: #0a2540;
-      border-radius: 10px;
-      padding: 8px 10px;
-      border: 1.5px solid transparent;
+      background: #0d1f35;
+      border-radius: 9px;
+      padding: 7px 9px;
+      border: 1.5px solid #1a2e45;
+      transition: border-color 0.15s;
     }
     .discard-card.best { border-color: #2ecc71; }
-    .discard-card.zero { opacity: 0.55; }
+    .discard-card.zero { opacity: 0.45; }
 
-    /* header row: tile + score + badge */
     .dc-header {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 7px;
+      gap: 7px;
+      margin-bottom: 5px;
     }
-    .dc-score {
-      font-size: 1.0em;
-      font-weight: 700;
-      color: #f39c12;
-    }
-    .dc-score.zero { color: #4a5568; font-size: 0.88em; }
+    .dc-name  { font-size: 0.82em; color: #95a5a6; }
+    .dc-score { font-size: 0.98em; font-weight: 700; color: #f39c12; }
     .dc-badge {
       margin-left: auto;
-      font-size: 0.72em;
+      font-size: 0.7em;
       color: #2ecc71;
       font-weight: 600;
+      background: rgba(46,204,113,0.12);
+      padding: 2px 7px;
+      border-radius: 20px;
     }
-    .dc-no-tenpai {
-      font-size: 0.8em;
-      color: #4a5568;
-      font-style: italic;
-      margin-left: 4px;
-    }
+    .dc-no-tenpai { font-size: 0.78em; color: #4a5568; font-style: italic; margin-left: 4px; }
 
-    /* waited tiles row */
-    .dc-waits {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-    }
+    .dc-waits { display: flex; flex-wrap: wrap; gap: 4px; }
+
     .wait-chip {
       display: flex;
       align-items: center;
       gap: 4px;
       background: #16213e;
-      border-radius: 7px;
-      padding: 4px 7px 4px 5px;
+      border-radius: 6px;
+      padding: 3px 7px 3px 4px;
     }
-    .wait-chip img { display: block; border-radius: 3px; }
-    .wait-chip-info { display: flex; flex-direction: column; line-height: 1.25; }
-    .wait-chip-mult { font-size: 0.75em; color: #f39c12; font-weight: 600; }
-    .wait-chip-rem  { font-size: 0.68em; color: #7f8c8d; }
-    .wait-chip-type { font-size: 0.65em; color: #9b59b6; }
+    .wait-chip img { border-radius: 3px; display: block; height: 28px; width: auto; }
+    .wc-info { display: flex; flex-direction: column; line-height: 1.25; }
+    .wc-mult { font-size: 0.72em; color: #f39c12; font-weight: 600; }
+    .wc-rem  { font-size: 0.65em; color: #7f8c8d; }
+    .wc-type { font-size: 0.62em; color: #9b59b6; }
 
-    .spinner { color: #3498db; font-style: italic; font-size: 0.9em; }
-    .result-dim { color: #7f8c8d; font-size: 0.85em; }
+    .result-dim { color: #7f8c8d; font-size: 0.85em; padding: 6px 0; }
+    .spinner    { color: #3498db; font-style: italic; font-size: 0.87em; }
+
+    /* ── Scrollbar styling ─────────────────────────────────────────────────── */
+    .results-panel::-webkit-scrollbar { width: 3px; }
+    .results-panel::-webkit-scrollbar-track { background: transparent; }
+    .results-panel::-webkit-scrollbar-thumb { background: #2d4a6e; border-radius: 2px; }
   </style>
 </head>
 <body>
+<div class="landscape">
 
-<div class="navbar">
-  <a href="/" class="back-btn">← 返回</a>
-  <span class="nav-title">出牌练习 · 饼</span>
-</div>
+  <!-- Nav -->
+  <div class="navbar">
+    <a href="/" class="back-btn">← 返回</a>
+    <span class="nav-title">出牌练习 &middot; 饼</span>
+  </div>
 
-<div class="panel">
-  <div class="panel-label" id="handLabel">生成14张饼手牌，分析最优出牌</div>
-  <div class="hand-row" id="row1"></div>
-  <div class="hand-row" id="row2"></div>
-</div>
+  <!-- Hand -->
+  <div class="hand-panel">
+    <div class="hand-label" id="handLabel">生成14张饼手牌，分析最优出牌</div>
+    <div class="hand-row" id="handRow"></div>
+  </div>
 
-<div class="btn-row">
-  <button class="btn btn-gen"     onclick="generate()">♟ 生成手牌</button>
-  <button class="btn btn-analyze" onclick="analyze()" id="btnAnalyze" disabled>▶ 分析出牌</button>
-</div>
+  <!-- Body -->
+  <div class="main-body">
 
-<div class="panel" id="results">
-  <div class="result-dim">点击「生成手牌」开始。</div>
-</div>
+    <!-- Results -->
+    <div class="results-panel" id="results">
+      <div class="result-dim">点击「生成」开始。</div>
+    </div>
+
+    <!-- 2×2 buttons -->
+    <div class="btn-panel">
+      <button class="btn btn-gen" onclick="generate()">
+        <span class="btn-icon">♟</span>
+        <span class="btn-label">生成</span>
+      </button>
+
+      <button class="btn btn-analyze" id="btnAH" onclick="analyzeOrHide()" disabled>
+        <span class="btn-icon" id="btnAHIcon">▶</span>
+        <span class="btn-label" id="btnAHLabel">分析</span>
+      </button>
+
+      <button class="btn btn-share" onclick="shareHand()">
+        <span class="btn-icon">⬆</span>
+        <span class="btn-label">分享</span>
+      </button>
+
+      <button class="btn btn-record" id="btnRecord" onclick="toggleRecord()">
+        <span class="btn-icon" id="btnRecordIcon">⏺</span>
+        <span class="btn-label" id="btnRecordLabel">记录</span>
+      </button>
+    </div>
+
+  </div><!-- main-body -->
+</div><!-- landscape -->
 
 <script>
+// ── constants ──────────────────────────────────────────────────────────────
 const TILE_ORDER = {};
 ['m','p','s'].forEach((s, si) => {
   for (let n = 1; n <= 9; n++) TILE_ORDER[`${n}${s}`] = si * 9 + (n - 1);
 });
 
-const HAND_H = 58;
-let hand = [];
-
 function imgSrc(t) { return `/tiles/${t}.png`; }
+
+// ── state ──────────────────────────────────────────────────────────────────
+let hand = [];
+let analysisState = 'none';   // 'none' | 'visible' | 'hidden'
+let lastScores = null;
+let isRecording = false;
+
+// ── results helpers ────────────────────────────────────────────────────────
 function setResults(html) { document.getElementById('results').innerHTML = html; }
 function setLoading(msg)  { setResults(`<div class="spinner">⏳ ${msg}</div>`); }
 
-// ── render 14-tile grid ───────────────────────────────────────────────────────
+// ── render hand ────────────────────────────────────────────────────────────
 function renderHand(scores) {
-  const r1 = document.getElementById('row1');
-  const r2 = document.getElementById('row2');
-  r1.innerHTML = ''; r2.innerHTML = '';
+  const row = document.getElementById('handRow');
+  row.innerHTML = '';
   if (!hand.length) return;
 
   const maxScore = scores ? Math.max(...scores.map(s => s.multiplier_sum)) : 0;
@@ -215,47 +335,88 @@ function renderHand(scores) {
     slot.className = 'tile-slot';
 
     const img = document.createElement('img');
-    img.src = imgSrc(tile); img.alt = tile; img.height = HAND_H;
+    img.src = imgSrc(tile);
+    img.alt = tile;
     slot.appendChild(img);
 
     const badge = document.createElement('div');
-    badge.className = 'score' + (scores ? '' : ' hidden');
-
-    if (scores) {
+    if (!scores) {
+      badge.className = 'tile-score hidden';
+      badge.textContent = '0';
+    } else {
       const ms = scores[i].multiplier_sum;
       badge.textContent = ms;
       if (ms === 0) {
-        badge.classList.add('is-zero');
+        badge.className = 'tile-score is-zero';
         slot.classList.add('zero');
       } else {
         const ratio = maxScore > 0 ? ms / maxScore : 0;
-        if (ratio >= 1.0) { badge.classList.add('is-best'); slot.classList.add('best'); }
-        else if (ratio >= 0.6) badge.classList.add('is-mid');
-        else badge.classList.add('is-low');
+        if      (ratio >= 1.0) { badge.className = 'tile-score is-best'; slot.classList.add('best'); }
+        else if (ratio >= 0.75) badge.className = 'tile-score is-high';
+        else if (ratio >= 0.5)  badge.className = 'tile-score is-mid';
+        else                    badge.className = 'tile-score is-low';
       }
     }
     slot.appendChild(badge);
-    (i < 7 ? r1 : r2).appendChild(slot);
+    row.appendChild(slot);
   });
 }
 
-// ── generate ──────────────────────────────────────────────────────────────────
+// ── Analyze / Hide toggle button ───────────────────────────────────────────
+function setAHButton(state) {
+  const btn   = document.getElementById('btnAH');
+  const icon  = document.getElementById('btnAHIcon');
+  const label = document.getElementById('btnAHLabel');
+  if (state === 'ready') {
+    btn.disabled = false;
+    icon.textContent  = '▶';
+    label.textContent = '分析';
+    analysisState = 'none';
+  } else if (state === 'visible') {
+    btn.disabled = false;
+    icon.textContent  = '▲';
+    label.textContent = '隐藏';
+    analysisState = 'visible';
+  } else if (state === 'hidden') {
+    btn.disabled = false;
+    icon.textContent  = '▼';
+    label.textContent = '显示';
+    analysisState = 'hidden';
+  }
+}
+
+async function analyzeOrHide() {
+  if (analysisState === 'none') {
+    await runAnalysis();
+  } else if (analysisState === 'visible') {
+    document.getElementById('results').style.display = 'none';
+    setAHButton('hidden');
+  } else {
+    document.getElementById('results').style.display = '';
+    setAHButton('visible');
+  }
+}
+
+// ── generate ───────────────────────────────────────────────────────────────
 async function generate() {
   setLoading('生成14张饼手牌…');
-  document.getElementById('btnAnalyze').disabled = true;
+  document.getElementById('btnAH').disabled = true;
+  document.getElementById('results').style.display = '';
 
   const d = await fetch('/api/random/no-win-p14').then(r => r.json());
   hand = d.tiles.sort((a, b) => TILE_ORDER[a] - TILE_ORDER[b]);
+  lastScores = null;
   renderHand(null);
-  document.getElementById('handLabel').textContent = '14张饼手牌（未胡）· 点击「分析出牌」';
-  document.getElementById('btnAnalyze').disabled = false;
-  setResults('<div class="result-dim">点击「分析出牌」查看每种出牌的听牌分析。</div>');
+  document.getElementById('handLabel').textContent = '14张饼手牌（未胡）';
+  setResults('<div class="result-dim">点击「分析」查看每种出牌的听牌分析。</div>');
+  setAHButton('ready');
 }
 
-// ── analyze ───────────────────────────────────────────────────────────────────
-async function analyze() {
+// ── analysis ───────────────────────────────────────────────────────────────
+async function runAnalysis() {
   if (!hand.length) return;
   setLoading('分析所有出牌选择…');
+  document.getElementById('results').style.display = '';
 
   const d = await fetch('/api/analyze14', {
     method: 'POST',
@@ -263,65 +424,92 @@ async function analyze() {
     body: JSON.stringify({tiles: hand})
   }).then(r => r.json());
 
-  const scores = d.results;
-  const maxScore = Math.max(...scores.map(s => s.multiplier_sum));
+  lastScores = d.results;
+  const maxScore = Math.max(...lastScores.map(s => s.multiplier_sum));
 
-  renderHand(scores);
+  renderHand(lastScores);
   document.getElementById('handLabel').textContent = '绿框 = 最优出牌';
 
-  // Deduplicate by tile value for the card list
+  // Deduplicate and sort
   const seen = new Set();
   const unique = [];
-  scores.forEach(s => { if (!seen.has(s.tile)) { seen.add(s.tile); unique.push(s); } });
+  lastScores.forEach(s => { if (!seen.has(s.tile)) { seen.add(s.tile); unique.push(s); } });
   unique.sort((a, b) => b.multiplier_sum - a.multiplier_sum);
 
   let html = '<div class="discard-list">';
-
   unique.forEach(s => {
     const isBest = s.multiplier_sum === maxScore && maxScore > 0;
     const isZero = s.multiplier_sum === 0;
 
     html += `<div class="discard-card${isBest ? ' best' : ''}${isZero ? ' zero' : ''}">`;
 
-    // Header row
+    // Header
     html += `<div class="dc-header">
-      <img src="${imgSrc(s.tile)}" height="38" style="border-radius:4px">
-      <span>打 ${s.tile[0]} 饼</span>`;
+      <img src="${imgSrc(s.tile)}" style="height:34px;border-radius:4px">
+      <span class="dc-name">打 ${s.tile[0]} 饼</span>`;
 
     if (isZero) {
       html += `<span class="dc-no-tenpai">无法听牌</span>`;
     } else {
-      html += `<span class="dc-score">有效牌力&nbsp;${s.multiplier_sum}</span>`;
+      html += `<span class="dc-score">牌力&nbsp;${s.multiplier_sum}</span>`;
     }
-    if (isBest) {
-      html += `<span class="dc-badge">★ 最优</span>`;
-    }
-    html += `</div>`; // dc-header
+    if (isBest) html += `<span class="dc-badge">★ 最优</span>`;
+    html += `</div>`;
 
     // Wait chips
     if (s.waits && s.waits.length > 0) {
       html += `<div class="dc-waits">`;
       s.waits.forEach(w => {
-        const contrib = w.remaining * w.multiplier;
         html += `<div class="wait-chip">
-          <img src="${imgSrc(w.tile)}" height="32">
-          <div class="wait-chip-info">
-            <span class="wait-chip-mult">×${w.multiplier}&ensp;贡献${contrib}</span>
-            <span class="wait-chip-rem">剩${w.remaining}张</span>
-            <span class="wait-chip-type">${w.labels.join('·')}</span>
+          <img src="${imgSrc(w.tile)}">
+          <div class="wc-info">
+            <span class="wc-mult">×${w.multiplier}&ensp;+${w.remaining * w.multiplier}</span>
+            <span class="wc-rem">剩${w.remaining}张</span>
+            <span class="wc-type">${w.labels.join('·')}</span>
           </div>
         </div>`;
       });
-      html += `</div>`; // dc-waits
+      html += `</div>`;
     }
-
-    html += `</div>`; // discard-card
+    html += `</div>`;
   });
-
   html += '</div>';
+
   setResults(html);
+  setAHButton('visible');
 }
 
+// ── share (placeholder) ────────────────────────────────────────────────────
+function shareHand() {
+  if (!hand.length) return;
+  const text = '我的饼手牌：' + hand.join(' ');
+  if (navigator.share) {
+    navigator.share({ title: '出牌练习', text }).catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(text).then(() => {
+      alert('手牌已复制到剪贴板');
+    }).catch(() => alert(text));
+  }
+}
+
+// ── record (placeholder) ───────────────────────────────────────────────────
+function toggleRecord() {
+  isRecording = !isRecording;
+  const btn   = document.getElementById('btnRecord');
+  const icon  = document.getElementById('btnRecordIcon');
+  const label = document.getElementById('btnRecordLabel');
+  if (isRecording) {
+    btn.classList.add('recording');
+    icon.textContent  = '⏹';
+    label.textContent = '停止';
+  } else {
+    btn.classList.remove('recording');
+    icon.textContent  = '⏺';
+    label.textContent = '记录';
+  }
+}
+
+// ── init ───────────────────────────────────────────────────────────────────
 generate();
 </script>
 </body>
