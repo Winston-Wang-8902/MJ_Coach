@@ -259,8 +259,8 @@
 
   <!-- Nav -->
   <div class="navbar">
-    <a href="/" class="back-btn">← 返回</a>
-    <span class="nav-title">出牌练习 &middot; 饼</span>
+    <a href="/study" class="back-btn">← 返回</a>
+    <span class="nav-title" id="navTitle">出牌练习 &middot; 饼</span>
   </div>
 
   <!-- Hand -->
@@ -304,6 +304,15 @@
 </div><!-- landscape -->
 
 <script>
+// ── difficulty from URL path (/study/5 | /study/8 | /study/11 | /study/14)
+const N = parseInt(window.location.pathname.split('/').pop()) || 14;
+const MELDS = (N - 2) / 3;   // 1 / 2 / 3 / 4
+const DIFFICULTY_LABEL = {5:'入门', 8:'初级', 11:'进阶', 14:'标准'}[N] || '';
+
+// Set nav title and page title
+document.getElementById('navTitle').textContent = `出牌练习 · 饼 · ${N}张`;
+document.title = `出牌练习 ${N}张`;
+
 // ── constants ──────────────────────────────────────────────────────────────
 const TILE_ORDER = {};
 ['m','p','s'].forEach((s, si) => {
@@ -314,13 +323,14 @@ function imgSrc(t) { return `/tiles/${t}.png`; }
 
 // ── state ──────────────────────────────────────────────────────────────────
 let hand = [];
-let analysisState = 'none';   // 'none' | 'visible' | 'hidden'
+let analysisState = 'none';   // 'none' | 'visible'
 let lastScores = null;
 let isRecording = false;
 
 // ── results helpers ────────────────────────────────────────────────────────
 function setResults(html) { document.getElementById('results').innerHTML = html; }
 function setLoading(msg)  { setResults(`<div class="spinner">⏳ ${msg}</div>`); }
+function idleMsg() { return `<div class="result-dim">点击「分析」查看每种出牌的听牌分析。</div>`; }
 
 // ── render hand ────────────────────────────────────────────────────────────
 function renderHand(scores) {
@@ -351,10 +361,10 @@ function renderHand(scores) {
         slot.classList.add('zero');
       } else {
         const ratio = maxScore > 0 ? ms / maxScore : 0;
-        if      (ratio >= 1.0) { badge.className = 'tile-score is-best'; slot.classList.add('best'); }
-        else if (ratio >= 0.75) badge.className = 'tile-score is-high';
-        else if (ratio >= 0.5)  badge.className = 'tile-score is-mid';
-        else                    badge.className = 'tile-score is-low';
+        if      (ratio >= 1.0)  { badge.className = 'tile-score is-best'; slot.classList.add('best'); }
+        else if (ratio >= 0.75)   badge.className = 'tile-score is-high';
+        else if (ratio >= 0.5)    badge.className = 'tile-score is-mid';
+        else                      badge.className = 'tile-score is-low';
       }
     }
     slot.appendChild(badge);
@@ -384,27 +394,26 @@ async function analyzeOrHide() {
   if (analysisState === 'none') {
     await runAnalysis();
   } else {
-    // Hide: clear results content, strip hand highlights, reset to unanalyzed
     lastScores = null;
     renderHand(null);
-    document.getElementById('handLabel').textContent = '14张饼手牌（未胡）';
-    setResults('<div class="result-dim">点击「分析」查看每种出牌的听牌分析。</div>');
+    document.getElementById('handLabel').textContent = `${N}张饼手牌（未胡）`;
+    setResults(idleMsg());
     setAHButton('ready');
   }
 }
 
 // ── generate ───────────────────────────────────────────────────────────────
 async function generate() {
-  setLoading('生成14张饼手牌…');
+  setLoading(`生成${N}张饼手牌…`);
   document.getElementById('btnAH').disabled = true;
   document.getElementById('results').style.display = '';
 
-  const d = await fetch('/api/random/no-win-p14').then(r => r.json());
+  const d = await fetch(`/api/random/no-win-p/${N}`).then(r => r.json());
   hand = d.tiles.sort((a, b) => TILE_ORDER[a] - TILE_ORDER[b]);
   lastScores = null;
   renderHand(null);
-  document.getElementById('handLabel').textContent = '14张饼手牌（未胡）';
-  setResults('<div class="result-dim">点击「分析」查看每种出牌的听牌分析。</div>');
+  document.getElementById('handLabel').textContent = `${N}张饼手牌（未胡）`;
+  setResults(idleMsg());
   setAHButton('ready');
 }
 
@@ -414,7 +423,7 @@ async function runAnalysis() {
   setLoading('分析所有出牌选择…');
   document.getElementById('results').style.display = '';
 
-  const d = await fetch('/api/analyze14', {
+  const d = await fetch('/api/analyzeN', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({tiles: hand})

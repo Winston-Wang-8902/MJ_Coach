@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>出牌练习 — 难度</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background: #1a1a2e;
+      color: #ecf0f1;
+      font-family: -apple-system, "Helvetica Neue", sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 20px env(safe-area-inset-bottom, 16px);
+      gap: 0;
+    }
+
+    .back-btn {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      background: #0f3460;
+      color: #ecf0f1;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 13px;
+      font-size: 0.85em;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .back-btn:active { background: #e94560; }
+
+    h1 {
+      color: #2ecc71;
+      font-size: 1.4em;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+    .subtitle {
+      color: #7f8c8d;
+      font-size: 0.88em;
+      margin-bottom: 32px;
+      text-align: center;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .card {
+      background: #16213e;
+      border-radius: 16px;
+      padding: 20px 14px 18px;
+      text-align: center;
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      border: 2px solid transparent;
+      transition: border-color 0.15s, transform 0.1s;
+      cursor: pointer;
+    }
+    .card:active { border-color: #2ecc71; transform: scale(0.96); }
+
+    .card-n {
+      font-size: 2.4em;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .card-label {
+      font-size: 0.8em;
+      color: #7f8c8d;
+      line-height: 1.4;
+    }
+    .card-tag {
+      font-size: 0.7em;
+      font-weight: 600;
+      border-radius: 20px;
+      padding: 2px 10px;
+      margin-top: 2px;
+    }
+
+    /* difficulty colour scale */
+    .d5  { --c: #2ecc71; }
+    .d8  { --c: #1abc9c; }
+    .d11 { --c: #e67e22; }
+    .d14 { --c: #e74c3c; }
+
+    .card .card-n  { color: var(--c); }
+    .card .card-tag { background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--c); }
+
+    /* tile-strip preview */
+    .tile-preview {
+      display: flex;
+      gap: 3px;
+      justify-content: center;
+      align-items: center;
+      min-height: 28px;
+    }
+    .tile-dot {
+      width: 14px;
+      height: 20px;
+      border-radius: 3px;
+      background: #0f3460;
+      border: 1px solid #1e3a5f;
+      flex-shrink: 0;
+    }
+    .tile-dot.pair { background: color-mix(in srgb, var(--c) 30%, #0f3460); border-color: var(--c); }
+    /* spacer between melds */
+    .tile-gap { width: 5px; }
+  </style>
+</head>
+<body>
+
+  <a href="/" class="back-btn">← 返回</a>
+
+  <h1>出牌练习 · 饼</h1>
+  <p class="subtitle">选择难度（手牌张数）</p>
+
+  <div class="grid">
+
+    <a href="/study/5" class="card d5">
+      <div class="card-n">5</div>
+      <div class="tile-preview" id="prev5"></div>
+      <div class="card-label">1面子 + 1对</div>
+      <div class="card-tag">入门</div>
+    </a>
+
+    <a href="/study/8" class="card d8">
+      <div class="card-n">8</div>
+      <div class="tile-preview" id="prev8"></div>
+      <div class="card-label">2面子 + 1对</div>
+      <div class="card-tag">初级</div>
+    </a>
+
+    <a href="/study/11" class="card d11">
+      <div class="card-n">11</div>
+      <div class="tile-preview" id="prev11"></div>
+      <div class="card-label">3面子 + 1对</div>
+      <div class="card-tag">进阶</div>
+    </a>
+
+    <a href="/study/14" class="card d14">
+      <div class="card-n">14</div>
+      <div class="tile-preview" id="prev14"></div>
+      <div class="card-label">4面子 + 1对</div>
+      <div class="card-tag">标准</div>
+    </a>
+
+  </div>
+
+  <script>
+    // Build tile-strip previews: melds (white dots) + pair (coloured dots)
+    const configs = {
+      prev5:  { melds: 1, color: '#2ecc71' },
+      prev8:  { melds: 2, color: '#1abc9c' },
+      prev11: { melds: 3, color: '#e67e22' },
+      prev14: { melds: 4, color: '#e74c3c' },
+    };
+
+    Object.entries(configs).forEach(([id, {melds, color}]) => {
+      const el = document.getElementById(id);
+      for (let m = 0; m < melds; m++) {
+        for (let t = 0; t < 3; t++) {
+          const d = document.createElement('div');
+          d.className = 'tile-dot';
+          el.appendChild(d);
+        }
+        if (m < melds - 1) {
+          const g = document.createElement('div');
+          g.className = 'tile-gap';
+          el.appendChild(g);
+        }
+      }
+      // gap before pair
+      const g2 = document.createElement('div');
+      g2.className = 'tile-gap';
+      el.appendChild(g2);
+      for (let t = 0; t < 2; t++) {
+        const d = document.createElement('div');
+        d.className = 'tile-dot pair';
+        d.style.setProperty('--c', color);
+        el.appendChild(d);
+      }
+    });
+  </script>
+
+</body>
+</html>

@@ -515,13 +515,90 @@ def check_tenpai(tiles: list[Tile] | list[str]) -> TenpaiResult:
     return TenpaiResult(is_tenpai=bool(waits), waits=waits)
 
 
+def _analyze_hand_any(tiles: list[Tile]) -> WinResult:
+    """
+    Generalized hand analyzer for any 3k+2-tile hand (k ≥ 1).
+
+    Works identically to analyze_hand but without the 14-tile restriction.
+    Seven-pairs detection only activates for the standard 14-tile case.
+    """
+    counts = Counter(tiles)
+    best: WinResult = _LOSER
+
+    # Seven-pairs only applies to the full 14-tile hand
+    if len(tiles) == 14:
+        sp = _check_seven_pairs(counts, tiles)
+        if sp is not None and sp.multiplier > best.multiplier:
+            best = sp
+
+    flush = _is_flush(tiles)
+    seen_pairs: set[str] = set()
+    for pair_tile, cnt in list(counts.items()):
+        if cnt < 2 or pair_tile in seen_pairs:
+            continue
+        seen_pairs.add(pair_tile)
+        rest = Counter(counts)
+        rest[pair_tile] -= 2
+        if rest[pair_tile] == 0:
+            del rest[pair_tile]
+        melds = _find_melds(rest, [])
+        if melds is not None:
+            mods: list[HandType] = []
+            if flush:
+                mods.append(HandType.FLUSH)
+            if melds and all(m.kind == "triplet" for m in melds):
+                mods.append(HandType.ALL_TRIPLETS)
+            hand_types = [HandType.STANDARD] + mods
+            mult = 1
+            for ht in hand_types:
+                mult *= ht.multiplier
+            if mult > best.multiplier:
+                best = WinResult(
+                    is_winner=True,
+                    hand_types=hand_types,
+                    multiplier=mult,
+                    decompositions=[Decomposition(pair=pair_tile, melds=melds)],
+                )
+    return best
+
+
+def check_tenpai_any(tiles: list[Tile] | list[str]) -> TenpaiResult:
+    """
+    Generalized tenpai check for any 3k+1-tile hand (k ≥ 1).
+
+    Works identically to check_tenpai but without the 13-tile restriction,
+    making it suitable for 4-tile (k=1), 7-tile (k=2), 10-tile (k=3), and
+    13-tile (k=4) hands.
+    """
+    tiles = [Tile(t) if not isinstance(t, Tile) else t for t in tiles]
+    counts = Counter(tiles)
+    waits: list[WaitingTile] = []
+    for candidate in ALL_TILES:
+        n_in_hand = counts.get(candidate, 0)
+        if n_in_hand >= 4:
+            continue
+        result = _analyze_hand_any(tiles + [candidate])
+        if result.is_winner:
+            waits.append(WaitingTile(tile=candidate, result=result,
+                                     remaining=4 - n_in_hand))
+    return TenpaiResult(is_tenpai=bool(waits), waits=waits)
+
+
+def random_no_win_p_n(n: int) -> list[Tile]:
+    """Return a random n-tile 饼 hand that is not a (mini) winning hand.
+
+    n must be 3k+2 for some k ≥ 1 (i.e. 5, 8, 11, 14, …).
+    """
+    deck = [Tile(f"{num}p") for num in "123456789"] * 4
+    while True:
+        hand = _random.sample(deck, n)
+        if not _analyze_hand_any(hand).is_winner:
+            return hand
+
+
 def random_no_win_p14() -> list[Tile]:
     """Return a random 14-tile 饼 hand that is not a winning hand."""
-    deck = [Tile(f"{n}p") for n in "123456789"] * 4
-    while True:
-        hand = _random.sample(deck, 14)
-        if not is_winning_hand(hand):
-            return hand
+    return random_no_win_p_n(14)
 
 
 def random_one_suit_hand() -> list[Tile]:
