@@ -229,6 +229,19 @@
     }
     .dc-no-tenpai { font-size: 0.78em; color: #4a5568; font-style: italic; margin-left: 4px; }
 
+    /* ── 杠 card ──────────────────────────────────────────────────────────── */
+    .gang-card { border-color: #8e44ad; background: #1a0d2e; }
+    .gang-card.best { border-color: #2ecc71; }
+    .gang-tag {
+      font-size: 0.68em;
+      font-weight: 700;
+      color: #9b59b6;
+      background: rgba(155,89,182,0.18);
+      border-radius: 20px;
+      padding: 2px 8px;
+      letter-spacing: 0.03em;
+    }
+
     .dc-waits { display: flex; flex-wrap: wrap; gap: 4px; }
 
     .wait-chip {
@@ -430,56 +443,84 @@ async function runAnalysis() {
   }).then(r => r.json());
 
   lastScores = d.results;
-  const maxScore = Math.max(...lastScores.map(s => s.multiplier_sum));
+  const gangs   = d.gangs || [];
+
+  // Only consider tenpai discards for the best-score highlight
+  const tenpaiScores = lastScores.filter(s => s.multiplier_sum > 0);
+  const maxDiscard   = tenpaiScores.length ? Math.max(...tenpaiScores.map(s => s.multiplier_sum)) : 0;
+  const maxGang      = gangs.length        ? Math.max(...gangs.map(g => g.multiplier_sum))        : 0;
+  const maxScore     = Math.max(maxDiscard, maxGang);
 
   renderHand(lastScores);
   document.getElementById('handLabel').textContent = '绿框 = 最优出牌';
 
-  // Deduplicate and sort
-  const seen = new Set();
-  const unique = [];
-  lastScores.forEach(s => { if (!seen.has(s.tile)) { seen.add(s.tile); unique.push(s); } });
-  unique.sort((a, b) => b.multiplier_sum - a.multiplier_sum);
+  // ── helper: render a wait-chip row ─────────────────────────────────────
+  function waitChipsHtml(waits) {
+    if (!waits || !waits.length) return '';
+    let h = '<div class="dc-waits">';
+    waits.forEach(w => {
+      h += `<div class="wait-chip">
+        <img src="${imgSrc(w.tile)}">
+        <div class="wc-info">
+          <span class="wc-mult">×${w.multiplier}&ensp;+${w.remaining * w.multiplier}</span>
+          <span class="wc-rem">剩${w.remaining}张</span>
+          <span class="wc-type">${w.labels.join('·')}</span>
+        </div>
+      </div>`;
+    });
+    return h + '</div>';
+  }
 
   let html = '<div class="discard-list">';
-  unique.forEach(s => {
-    const isBest = s.multiplier_sum === maxScore && maxScore > 0;
-    const isZero = s.multiplier_sum === 0;
 
-    html += `<div class="discard-card${isBest ? ' best' : ''}${isZero ? ' zero' : ''}">`;
-
-    // Header
-    html += `<div class="dc-header">
-      <img src="${imgSrc(s.tile)}" style="height:34px;border-radius:4px">
-      <span class="dc-name">打 ${s.tile[0]} 饼</span>`;
-
-    if (isZero) {
-      html += `<span class="dc-no-tenpai">无法听牌</span>`;
+  // ── 暗杠 cards (shown first when available) ──────────────────────────
+  gangs.forEach(g => {
+    const isBest = g.multiplier_sum === maxScore && maxScore > 0;
+    html += `<div class="discard-card gang-card${isBest ? ' best' : ''}">
+      <div class="dc-header">
+        <img src="${imgSrc(g.tile)}" style="height:34px;border-radius:4px">
+        <span class="dc-name">暗杠 ${g.tile[0]} 饼</span>
+        <span class="gang-tag">杠 ×2</span>`;
+    if (g.multiplier_sum > 0) {
+      html += `<span class="dc-score">牌力&nbsp;${g.multiplier_sum}</span>`;
     } else {
-      html += `<span class="dc-score">牌力&nbsp;${s.multiplier_sum}</span>`;
+      html += `<span class="dc-no-tenpai">无已知听牌</span>`;
     }
     if (isBest) html += `<span class="dc-badge">★ 最优</span>`;
     html += `</div>`;
-
-    // Wait chips
-    if (s.waits && s.waits.length > 0) {
-      html += `<div class="dc-waits">`;
-      s.waits.forEach(w => {
-        html += `<div class="wait-chip">
-          <img src="${imgSrc(w.tile)}">
-          <div class="wc-info">
-            <span class="wc-mult">×${w.multiplier}&ensp;+${w.remaining * w.multiplier}</span>
-            <span class="wc-rem">剩${w.remaining}张</span>
-            <span class="wc-type">${w.labels.join('·')}</span>
-          </div>
-        </div>`;
-      });
-      html += `</div>`;
-    }
+    html += waitChipsHtml(g.waits);
     html += `</div>`;
   });
-  html += '</div>';
 
+  // ── discard cards (only tenpai ones) ─────────────────────────────────
+  const seen = new Set();
+  const unique = [];
+  lastScores.forEach(s => {
+    if (s.multiplier_sum > 0 && !seen.has(s.tile)) {
+      seen.add(s.tile);
+      unique.push(s);
+    }
+  });
+  unique.sort((a, b) => b.multiplier_sum - a.multiplier_sum);
+
+  unique.forEach(s => {
+    const isBest = s.multiplier_sum === maxScore;
+    html += `<div class="discard-card${isBest ? ' best' : ''}">
+      <div class="dc-header">
+        <img src="${imgSrc(s.tile)}" style="height:34px;border-radius:4px">
+        <span class="dc-name">打 ${s.tile[0]} 饼</span>
+        <span class="dc-score">牌力&nbsp;${s.multiplier_sum}</span>`;
+    if (isBest) html += `<span class="dc-badge">★ 最优</span>`;
+    html += `</div>`;
+    html += waitChipsHtml(s.waits);
+    html += `</div>`;
+  });
+
+  if (!unique.length && !gangs.length) {
+    html += '<div class="result-dim">所有出牌均无法听牌。</div>';
+  }
+
+  html += '</div>';
   setResults(html);
   setAHButton('visible');
 }

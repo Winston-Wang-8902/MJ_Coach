@@ -112,8 +112,24 @@ def api_analyze():
     return jsonify({"type": "invalid", "count": n})
 
 
+def _wait_to_dict(w, multiplier_scale: int = 1) -> dict:
+    return {
+        "tile": str(w.tile),
+        "labels": [ht.label for ht in w.result.hand_types],
+        "multiplier": w.result.multiplier * multiplier_scale,
+        "remaining": w.remaining,
+    }
+
+
 def _discard_analysis(tiles: list[Tile]) -> dict:
-    """For each tile in an N-tile hand, return tenpai info after discarding it."""
+    """
+    For each tile in an N-tile hand, return tenpai info after discarding it.
+    Also returns gang (暗杠) options for tiles with 4 copies.
+    """
+    from collections import Counter
+    counts: Counter = Counter(str(t) for t in tiles)
+
+    # ── discard options ───────────────────────────────────────────────────────
     cache: dict[str, dict] = {}
     results = []
     for i, tile in enumerate(tiles):
@@ -124,18 +140,31 @@ def _discard_analysis(tiles: list[Tile]) -> dict:
             cache[key] = {
                 "tile": key,
                 "multiplier_sum": r.multiplier_sum if r.is_tenpai else 0,
-                "waits": [
-                    {
-                        "tile": str(w.tile),
-                        "labels": [ht.label for ht in w.result.hand_types],
-                        "multiplier": w.result.multiplier,
-                        "remaining": w.remaining,
-                    }
-                    for w in r.waits
-                ],
+                "waits": [_wait_to_dict(w) for w in r.waits],
             }
         results.append(cache[key])
-    return {"results": results}
+
+    # ── 暗杠 options: tiles with exactly 4 copies ──────────────────────────
+    gangs = []
+    for tile_str, cnt in sorted(counts.items()):
+        if cnt != 4:
+            continue
+        # Remove all 4 copies; remaining N-4 tiles are checked for tenpai.
+        # N-4 = 3k+1 for all valid N (5→1, 8→4, 11→7, 14→10), so
+        # check_tenpai_any handles them correctly.
+        remaining = [t for t in tiles if str(t) != tile_str]
+        r = check_tenpai_any(remaining)
+        # Tile X is no longer in the deck after kong — exclude it from waits.
+        valid_waits = [w for w in r.waits if str(w.tile) != tile_str]
+        adjusted_ms = sum(w.remaining * w.result.multiplier * 2
+                          for w in valid_waits)
+        gangs.append({
+            "tile": tile_str,
+            "multiplier_sum": adjusted_ms,
+            "waits": [_wait_to_dict(w, multiplier_scale=2) for w in valid_waits],
+        })
+
+    return {"results": results, "gangs": gangs}
 
 
 @app.route("/api/analyze14", methods=["POST"])
